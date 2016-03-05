@@ -34,6 +34,16 @@ namespace Steam_Machine_Manager
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            //kick off steam before doing any work
+            if (isSteamRunning() == false)
+            {
+                //Kill the process so that it can be restarted
+                killSteam();
+                startSteam();
+            }
+
+
+            //Get application's path
             string applicationPath = System.Reflection.Assembly.GetEntryAssembly().Location;
             int idx = applicationPath.LastIndexOf('\\');
             applicationPath = applicationPath.Substring(0, idx);
@@ -53,6 +63,35 @@ namespace Steam_Machine_Manager
                 }
                 
             }
+
+            //Update video driver
+            if(File.Exists(applicationPath + "\\update\\video.exe") && File.Exists(applicationPath + "\\update\\dvideo.txt") == false)
+            {
+                try
+                {
+                    updateVideo();
+                }
+                catch(Exception ex)
+                {
+                    ErrorLog(ex.ToString());
+                }
+            }
+
+            //Delete driver update if it exists
+            if(File.Exists(applicationPath + "\\update\\dvideo.txt"))
+            {
+                //Delete the driver and file
+                try
+                {
+                    File.Delete(applicationPath + "\\update\\video.exe");
+                    File.Delete(applicationPath + "\\update\\dvideo.txt");
+                }
+                catch(Exception ex)
+                {
+                    ErrorLog(ex.ToString());
+                }
+            }
+
 
             //start time service
             startTimeService();
@@ -307,16 +346,48 @@ namespace Steam_Machine_Manager
         {
             try
             {
+                //First register
                 ProcessStartInfo startInfo = new ProcessStartInfo("w32tm");
                 startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                startInfo.Arguments = "/resync";
-                Process.Start(startInfo);
+                startInfo.Arguments = "/register";
+                var p = Process.Start(startInfo);
+                p.WaitForExit();
+
+                //Now update
+                startInfo = new ProcessStartInfo("w32tm");
+                startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                startInfo.Arguments = "/config /update /manualpeerlist:\"pool.ntp.org\"";
+                p = Process.Start(startInfo);
+                p.WaitForExit();
             }
             catch (Exception ex)
             {
-                ErrorLog("Cannot launch updater!");
+                ErrorLog("Cannot update time!");
                 ErrorLog(ex.Message.ToString());
             }
+        }
+
+        private void updateVideo()
+        {
+            string applicationPath = System.Reflection.Assembly.GetEntryAssembly().Location;
+            int idx = applicationPath.LastIndexOf('\\');
+            applicationPath = applicationPath.Substring(0, idx);
+
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo(applicationPath + "\\update\\video.exe");
+                //startInfo.WindowStyle = ProcessWindowStyle;
+                startInfo.ErrorDialog = false;
+                startInfo.Arguments = "/s";
+                Process.Start(startInfo);
+                File.Create(applicationPath + "\\update\\dvideo.txt");
+            }
+            catch (Exception ex)
+            {
+                ErrorLog(ex.ToString());
+            }
+
+            applicationPath = null;
         }
     }
 }
