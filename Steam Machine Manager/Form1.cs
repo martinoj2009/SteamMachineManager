@@ -34,6 +34,7 @@ namespace Steam_Machine_Manager
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            
             //kick off steam before doing any work
             if (isSteamRunning() == false)
             {
